@@ -33,7 +33,10 @@ Get a node that is accesable by the program and add the ip to the config file.
 ```json
 {
   "solana": {
-    "node_url": "NODE_URL"
+    "node_url": "https://CNAME.bdnodes.net/?auth=AUTH=TOKEN"
+  },
+  "postgres": {
+    "url": "postgresql://user:password@localhost/solana_blocks"
   }
 }
 ```
