@@ -50,3 +50,6 @@ docker-compose up -d
 ## Contributing
 
 Contributions to the project are welcome. Please fork the repository, make your changes, and submit a pull request.
+
+License
+MIT License
