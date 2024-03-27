@@ -1,0 +1,8 @@
+{
+    "solana": {
+        "node_url": "NODE_URL"
+    },
+    "postgres": {
+        "url": "postgresql://user:password@postgres/solana_blocks"
+    }
+}

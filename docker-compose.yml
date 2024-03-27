@@ -1,0 +1,20 @@
+version: "3"
+services:
+  db:
+    image: postgres
+    restart: always
+    container_name: postgres
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: user
+      POSTGRES_DB: solana_blocks
+    ports:
+      - 5432:5432
+  app:
+    build: .
+    container_name: solana-blocks
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+    depends_on:
+      - db
