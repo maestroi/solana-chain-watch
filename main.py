@@ -67,6 +67,7 @@ async def fetch_block(session, url, slot, retries=4, delay=0.1):
             "method": "getBlock",
             "params": [slot, {
                 "encoding": "json",
+                "maxSupportedTransactionVersion":0,
                 "transactionDetails": "full",
                 "rewards": False,
                 "commitment": "finalized"
@@ -100,8 +101,8 @@ async def main():
         node_url = config_url.split('//')[1].split('/')[0]
         node_ip = socket.gethostbyname(node_url)
         # Synchronous ping call - consider finding an async solution
-        #ping_time = ping(node_ip) @TODO FIX ME requires root
-        ping_time = 30
+        ping_time = ping(node_ip) #@TODO FIX ME requires root
+        #ping_time = 30
         logging.info(40 * "-")
         logging.info(f"Latency checker for Solana node")
         logging.info(f"Ping time to node: {ping_time * 1000:.2f}ms")
