@@ -83,9 +83,9 @@ async def fetch_block(session, url, slot, retries=4, delay=0.1):
                 response_data = await response.json()
                 if 'error' in response_data:
                     error_message = response_data['error']['message']
-                    logging.error(f"Error fetching block for slot {slot}: {error_message}")
+                    logging.debug(f"Error fetching block for slot {slot}: {error_message}")
                     await asyncio.sleep(delay)  # Sleep before retrying we might be too fast!!
-                    delay *= 2 
+                    delay =+ 0.1
                 else:
                     size_mb = len(content) / (1024 * 1024)
                     return response_data, latency_ms, size_mb
@@ -98,8 +98,9 @@ async def main():
     async with aiohttp.ClientSession() as session:
         config_url = await read_config('node_url')  # Assume this function correctly retrieves the URL
         node_url = config_url.split('//')[1].split('/')[0]
-        # node_ip = socket.gethostbyname(node_url)
+        node_ip = socket.gethostbyname(node_url)
         # Synchronous ping call - consider finding an async solution
+        #ping_time = ping(node_ip)
         ping_time = 30
         logging.info(40 * "-")
         logging.info(f"Latency checker for Solana node")
@@ -112,6 +113,7 @@ async def main():
         total_round_trip_to_long = 1
         total_round_trip_latency_long = 1
         check_counter = 0
+        max_latency = 300
         try:
             latest_slot, _, _ = await fetch_slot(session, config_url)
             logging.info(f"Starting with the latest slot: {latest_slot}")
@@ -125,7 +127,7 @@ async def main():
                 await insert_into_database(current_slot, error, block_size_mb, block_latency_ms)
                 
                 if 'error' in block_data:
-                    logging.info(f"Skipping slot {current_slot} due to error: {block_data['message']}")
+                    logging.info(f"Skipping slot {current_slot} due to error: {block_data['message']} does not count as failed blocks forking")
                     current_slot += 1
                     logging.info(40 * "-")
                     continue
@@ -138,29 +140,26 @@ async def main():
                 logging.info(40 * "-")
                 # Check how far behind we are periodically
                 check_counter += 1
-                if check_counter % 25 == 0:
-                    new_latest_slot, new_latest_slot_latency, _ = await fetch_slot(session, config_url)
-                else:
-                    new_latest_slot = latest_slot
-                    new_latest_slot_latency = 1
+
+                # This adds 30ms to the latency but we need to be able to compare :(
+                new_latest_slot, new_latest_slot_latency, _ = await fetch_slot(session, config_url)
+                lag = new_latest_slot - current_slot
                     
-                if new_latest_slot > latest_slot:
-                    lag = new_latest_slot - current_slot
-                    total_latency += new_latest_slot_latency
-                
                 average_latency = total_latency / total_blocks
                 total_round_trip_latency = block_latency_ms + new_latest_slot_latency
-                logging.info(f"Block {current_slot} fetched. Latency: {block_latency_ms:.2f}ms, Size: {block_size_mb:.3f} MB")
-                logging.info(f"Average latency so far: {average_latency:.2f}ms")
-                logging.info(f"Updated latest slot: {new_latest_slot} with Latency {new_latest_slot_latency:.2f}ms. We are {lag} slots behind.")
                 
-                if total_round_trip_latency > 300:
+                latency_left = max_latency - block_latency_ms
+                logging.debug(f"Block {current_slot} fetched. Latency: {block_latency_ms:.2f}ms, Size: {block_size_mb:.3f} MB we have {latency_left:.2f}ms left")
+                logging.debug(f"Updated latest slot: {new_latest_slot} with Latency {new_latest_slot_latency:.2f}ms. We are {lag} slots behind.")
+                
+                if total_round_trip_latency > max_latency:
                     total_round_trip_to_long += 1
                     total_round_trip_latency_long += total_round_trip_latency
-                    logging.error(f"Round trip latency is too high At {total_round_trip_latency:.2f}ms can't keep up with the network!")
+                    logging.debug(f"Round trip latency is too high At {total_round_trip_latency:.2f}ms can't keep up with the network!")
                     
                 to_long_roundtrip_latency = total_round_trip_latency_long / total_round_trip_to_long
-                logging.info(f"Total round trip latency longer than 300ms: {total_round_trip_to_long} average {to_long_roundtrip_latency:.2f}ms ")
+                percantage_fail = (total_round_trip_to_long / total_blocks) * 100
+                logging.info(f"Current slot: {current_slot} | Slow blocks(>300ms): {total_round_trip_to_long} / Total blocks: {total_blocks} | Average: {average_latency:.2f}ms / Average(slow): {to_long_roundtrip_latency:.2f}ms | Lag {lag} slots behind | Failure rate: {percantage_fail:.2f}%")
 
 
         except Exception as e:
