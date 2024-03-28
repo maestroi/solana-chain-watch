@@ -100,7 +100,7 @@ async def main():
         node_url = config_url.split('//')[1].split('/')[0]
         node_ip = socket.gethostbyname(node_url)
         # Synchronous ping call - consider finding an async solution
-        #ping_time = ping(node_ip)
+        #ping_time = ping(node_ip) @TODO FIX ME requires root
         ping_time = 30
         logging.info(40 * "-")
         logging.info(f"Latency checker for Solana node")
